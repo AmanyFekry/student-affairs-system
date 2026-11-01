@@ -1,28 +1,9 @@
-/* =====================================================================
-   Nova Schools — Student Affairs & Fees System
-   01_create_schema.sql : creates the database, tables, constraints,
-                          indexes and balance views.
-   ===================================================================== */
-
-
--- USE master;
--- IF DB_ID('NovaSchoolDB') IS NOT NULL
--- BEGIN
---     ALTER DATABASE NovaSchoolDB SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
---     DROP DATABASE NovaSchoolDB;
--- END
--- GO
-
 IF DB_ID('NovaSchoolDB') IS NULL
     CREATE DATABASE NovaSchoolDB;
 GO
 
 USE NovaSchoolDB;
 GO
-
-/* ---------------------------------------------------------------------
-   1) Lookup tables: Stages, Classes, AcademicYears
-   --------------------------------------------------------------------- */
 
 CREATE TABLE dbo.Stages (
     StageId    INT IDENTITY(1,1) CONSTRAINT PK_Stages PRIMARY KEY,
@@ -36,7 +17,7 @@ GO
 CREATE TABLE dbo.Classes (
     ClassId    INT IDENTITY(1,1) CONSTRAINT PK_Classes PRIMARY KEY,
     StageId    INT          NOT NULL CONSTRAINT FK_Classes_Stages REFERENCES dbo.Stages(StageId),
-    ClassName  NVARCHAR(20) NOT NULL,            -- e.g. 1/A
+    ClassName  NVARCHAR(20) NOT NULL,
     Capacity   INT          NOT NULL CONSTRAINT DF_Classes_Capacity DEFAULT (30),
     CONSTRAINT UQ_Classes_Stage_Name UNIQUE (StageId, ClassName),
     CONSTRAINT CK_Classes_Capacity CHECK (Capacity > 0)
@@ -45,7 +26,7 @@ GO
 
 CREATE TABLE dbo.AcademicYears (
     YearId     INT IDENTITY(1,1) CONSTRAINT PK_AcademicYears PRIMARY KEY,
-    Name       NVARCHAR(9) NOT NULL,             -- e.g. 2025/2026
+    Name       NVARCHAR(9) NOT NULL,
     StartDate  DATE        NOT NULL,
     EndDate    DATE        NOT NULL,
     IsCurrent  BIT         NOT NULL CONSTRAINT DF_AcademicYears_IsCurrent DEFAULT (0),
@@ -54,14 +35,9 @@ CREATE TABLE dbo.AcademicYears (
 );
 GO
 
-
 CREATE UNIQUE INDEX UX_AcademicYears_OneCurrent
     ON dbo.AcademicYears (IsCurrent) WHERE IsCurrent = 1;
 GO
-
-/* ---------------------------------------------------------------------
-   2) Students & yearly enrollment
-   --------------------------------------------------------------------- */
 
 CREATE TABLE dbo.Students (
     StudentId      INT IDENTITY(1,1) CONSTRAINT PK_Students PRIMARY KEY,
@@ -82,23 +58,18 @@ GO
 CREATE INDEX IX_Students_FullName ON dbo.Students (FullName);
 GO
 
-
 CREATE TABLE dbo.Enrollments (
     EnrollmentId  INT IDENTITY(1,1) CONSTRAINT PK_Enrollments PRIMARY KEY,
     StudentId     INT          NOT NULL CONSTRAINT FK_Enrollments_Students      REFERENCES dbo.Students(StudentId),
     YearId        INT          NOT NULL CONSTRAINT FK_Enrollments_AcademicYears REFERENCES dbo.AcademicYears(YearId),
     ClassId       INT          NOT NULL CONSTRAINT FK_Enrollments_Classes       REFERENCES dbo.Classes(ClassId),
     EnrolledAt    DATETIME2(0) NOT NULL CONSTRAINT DF_Enrollments_EnrolledAt DEFAULT (SYSDATETIME()),
-    CONSTRAINT UQ_Enrollments_Student_Year UNIQUE (StudentId, YearId)   -- قيد واحد للطالب في السنة
+    CONSTRAINT UQ_Enrollments_Student_Year UNIQUE (StudentId, YearId)
 );
 GO
 
 CREATE INDEX IX_Enrollments_Class ON dbo.Enrollments (ClassId, YearId);
 GO
-
-/* ---------------------------------------------------------------------
-   3) Fees: template → per-student charges
-   --------------------------------------------------------------------- */
 
 CREATE TABLE dbo.FeeSchedules (
     FeeScheduleId  INT IDENTITY(1,1) CONSTRAINT PK_FeeSchedules PRIMARY KEY,
@@ -126,10 +97,6 @@ CREATE TABLE dbo.StudentCharges (
     CONSTRAINT CK_StudentCharges_Discount CHECK (Discount >= 0 AND Discount <= Amount)
 );
 GO
-
-/* ---------------------------------------------------------------------
-   4) Payments: receipt → allocations to installments
-   --------------------------------------------------------------------- */
 
 CREATE TABLE dbo.Payments (
     PaymentId     INT IDENTITY(1,1) CONSTRAINT PK_Payments PRIMARY KEY,
@@ -162,17 +129,13 @@ GO
 CREATE INDEX IX_PaymentAllocations_Charge ON dbo.PaymentAllocations (ChargeId);
 GO
 
-/* ---------------------------------------------------------------------
-   5) Transfers
-   --------------------------------------------------------------------- */
-
 CREATE TABLE dbo.Transfers (
     TransferId    INT IDENTITY(1,1) CONSTRAINT PK_Transfers PRIMARY KEY,
     StudentId     INT           NOT NULL CONSTRAINT FK_Transfers_Students REFERENCES dbo.Students(StudentId),
     TransferDate  DATE          NOT NULL,
     ToSchool      NVARCHAR(150) NOT NULL,
     Reason        NVARCHAR(300) NULL,
-    ClearanceNo   NVARCHAR(20)  NULL,         -- رقم شهادة إخلاء الطرف
+    ClearanceNo   NVARCHAR(20)  NULL,
     CreatedAt     DATETIME2(0)  NOT NULL CONSTRAINT DF_Transfers_CreatedAt DEFAULT (SYSDATETIME())
 );
 GO
@@ -180,10 +143,6 @@ GO
 CREATE UNIQUE INDEX UX_Transfers_ClearanceNo
     ON dbo.Transfers (ClearanceNo) WHERE ClearanceNo IS NOT NULL;
 GO
-
-/* ---------------------------------------------------------------------
-   6) Views: balances are CALCULATED, never stored
-   --------------------------------------------------------------------- */
 
 CREATE VIEW dbo.vw_ChargeBalances
 AS
@@ -238,4 +197,4 @@ OUTER APPLY (
 ) b;
 GO
 
-PRINT N'✅ NovaSchoolDB schema created successfully.';
+PRINT 'NovaSchoolDB schema created successfully.';
