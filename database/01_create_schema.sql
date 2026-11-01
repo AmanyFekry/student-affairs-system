@@ -2,10 +2,9 @@
    Nova Schools — Student Affairs & Fees System
    01_create_schema.sql : creates the database, tables, constraints,
                           indexes and balance views.
-   Run once on a fresh SQL Server instance (SSMS → New Query → F5).
    ===================================================================== */
 
--- ⚠️ لإعادة البناء من الصفر (بيمسح كل البيانات!) شيلي التعليق من السطور دي:
+
 -- USE master;
 -- IF DB_ID('NovaSchoolDB') IS NOT NULL
 -- BEGIN
@@ -55,7 +54,7 @@ CREATE TABLE dbo.AcademicYears (
 );
 GO
 
--- سنة دراسية واحدة بس ممكن تكون "الحالية"
+
 CREATE UNIQUE INDEX UX_AcademicYears_OneCurrent
     ON dbo.AcademicYears (IsCurrent) WHERE IsCurrent = 1;
 GO
@@ -83,7 +82,7 @@ GO
 CREATE INDEX IX_Students_FullName ON dbo.Students (FullName);
 GO
 
--- قيد الطالب في سنة معينة: كان في أنهي فصل
+
 CREATE TABLE dbo.Enrollments (
     EnrollmentId  INT IDENTITY(1,1) CONSTRAINT PK_Enrollments PRIMARY KEY,
     StudentId     INT          NOT NULL CONSTRAINT FK_Enrollments_Students      REFERENCES dbo.Students(StudentId),
@@ -101,7 +100,6 @@ GO
    3) Fees: template → per-student charges
    --------------------------------------------------------------------- */
 
--- قالب المصروفات: لكل مرحلة في كل سنة
 CREATE TABLE dbo.FeeSchedules (
     FeeScheduleId  INT IDENTITY(1,1) CONSTRAINT PK_FeeSchedules PRIMARY KEY,
     YearId         INT           NOT NULL CONSTRAINT FK_FeeSchedules_AcademicYears REFERENCES dbo.AcademicYears(YearId),
@@ -117,7 +115,6 @@ CREATE TABLE dbo.FeeSchedules (
 );
 GO
 
--- المطلوب فعلًا من الطالب (بيسمح بخصم، وبإن مش كل الطلاب عليهم باص)
 CREATE TABLE dbo.StudentCharges (
     ChargeId       INT IDENTITY(1,1) CONSTRAINT PK_StudentCharges PRIMARY KEY,
     EnrollmentId   INT           NOT NULL CONSTRAINT FK_StudentCharges_Enrollments  REFERENCES dbo.Enrollments(EnrollmentId),
@@ -134,7 +131,6 @@ GO
    4) Payments: receipt → allocations to installments
    --------------------------------------------------------------------- */
 
--- الإيصال
 CREATE TABLE dbo.Payments (
     PaymentId     INT IDENTITY(1,1) CONSTRAINT PK_Payments PRIMARY KEY,
     EnrollmentId  INT           NOT NULL CONSTRAINT FK_Payments_Enrollments REFERENCES dbo.Enrollments(EnrollmentId),
@@ -153,7 +149,6 @@ GO
 CREATE INDEX IX_Payments_Enrollment ON dbo.Payments (EnrollmentId);
 GO
 
--- توزيع الإيصال على الأقساط (البرنامج بيعمله: الأقدم الأول)
 CREATE TABLE dbo.PaymentAllocations (
     AllocationId  INT IDENTITY(1,1) CONSTRAINT PK_PaymentAllocations PRIMARY KEY,
     PaymentId     INT           NOT NULL CONSTRAINT FK_PaymentAllocations_Payments       REFERENCES dbo.Payments(PaymentId),
@@ -190,7 +185,6 @@ GO
    6) Views: balances are CALCULATED, never stored
    --------------------------------------------------------------------- */
 
--- رصيد كل قسط
 CREATE VIEW dbo.vw_ChargeBalances
 AS
 SELECT
@@ -211,7 +205,6 @@ OUTER APPLY (
 ) pa;
 GO
 
--- رصيد الطالب في السنة + المتأخر
 CREATE VIEW dbo.vw_StudentBalances
 AS
 SELECT
